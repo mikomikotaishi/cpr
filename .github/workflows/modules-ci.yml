@@ -25,9 +25,9 @@ jobs:
         sudo apt install -y libc++-21-dev libc++abi-21-dev
       env:
         DEBIAN_FRONTEND: noninteractive
-    - name: Install CMake 3.28+
+    - name: Install CMake
       run: |
-        wget -O cmake.sh https://github.com/Kitware/CMake/releases/download/v3.28.3/cmake-3.28.3-linux-x86_64.sh
+        wget -O cmake.sh https://github.com/Kitware/CMake/releases/download/v4.2.3/cmake-4.2.3-linux-x86_64.sh
         sudo sh cmake.sh --prefix=/usr/local --skip-license
         cmake --version
     - name: Checkout
@@ -66,7 +66,14 @@ jobs:
     - name: Update package list
       run: dnf update -y
     - name: Install Dependencies
-      run: dnf install -y gcc g++ git make openssl-devel libcurl-devel cmake libpsl-devel libunistring-devel meson ninja-build
+      run: dnf install -y gcc g++ git make openssl-devel libcurl-devel libpsl-devel libunistring-devel meson ninja-build tar wget
+    - name: Install CMake
+      run: |
+        wget -O cmake.tar.gz https://github.com/Kitware/CMake/releases/download/v4.2.3/cmake-4.2.3-linux-x86_64.tar.gz
+        mkdir -p /opt/cmake
+        tar -xzf cmake.tar.gz --strip-components=1 -C /opt/cmake
+        echo /opt/cmake/bin >> "$GITHUB_PATH"
+        /opt/cmake/bin/cmake --version
     - name: Checkout
       uses: actions/checkout@v5
     - name: Configure
@@ -122,7 +129,7 @@ jobs:
           -DCPR_BUILD_TESTS=ON `
           -DCPR_BUILD_TESTS_SSL=OFF `
           -DCPR_USE_SYSTEM_CURL=ON `
-          -G "Visual Studio 17 2022"
+          -G Ninja
       shell: pwsh
     - name: Build
       run: cmake --build build --config Release --verbose
@@ -147,7 +154,8 @@ jobs:
     steps:
     - name: Install Dependencies
       run: |
-        brew install llvm libpsl ninja
+        brew install cmake llvm libpsl ninja
+        echo "$(brew --prefix cmake)/bin" >> "$GITHUB_PATH"
     - name: Checkout
       uses: actions/checkout@v5
     - name: Configure

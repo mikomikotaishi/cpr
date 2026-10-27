@@ -8,12 +8,11 @@
  * So skip all other imports and declare them in 'cpr.cxx'.
  **/
 #ifndef CPR_IMPORT_STD
+#include <cstdint>
 #include <optional>
 #include <string>
 #include <vector>
 #endif
-
-#include <cstdint>
 
 namespace cpr {
 

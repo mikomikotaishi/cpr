@@ -6,8 +6,15 @@
 #include <string>
 
 
+TEST(VersionTests, StringVersionExists) {
+#ifndef CPR_VERSION
+    EXPECT_TRUE(false);
+#endif // CPR_VERSION
+}
+
 TEST(VersionTests, StringVersionValid) {
-    std::string version{CPR_VERSION};
+    EXPECT_TRUE(CPR_VERSION != nullptr);
+    std::string version = CPR_VERSION;
 
     // Check if the version string is: '\d+\.\d+\.\d+'
     bool digit = true;

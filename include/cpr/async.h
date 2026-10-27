@@ -16,7 +16,7 @@ namespace cpr {
  * ExitInstance() destroys it once; the singleton cannot be recreated after cleanup.
  * Callers must coordinate shutdown with every use of this pool.
  **/
-class GlobalThreadPool : public ThreadPool {
+EXPORT_CPR class GlobalThreadPool : public ThreadPool {
     CPR_SINGLETON_DECL(GlobalThreadPool)
   protected:
     /** Constructs the singleton with the selected backend and default worker limits. */
@@ -68,7 +68,7 @@ auto async(Fn&& fn, Args&&... args) {
 }
 
 /** Controls worker limits and final shutdown of the process-wide asynchronous request pool. */
-class async {
+EXPORT_CPR class async {
   public:
     /**
      * Lazily creates the global pool and sets both worker limits together.

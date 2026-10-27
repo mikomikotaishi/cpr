@@ -1,8 +1,13 @@
 #ifndef CPR_THREADPOOL_H
 #define CPR_THREADPOOL_H
 
-#include "cpr/cprexport.h"
+#include "cpr/export.h"
 
+/**
+ * If we build cpr as C++20 module, we use 'import std;'.
+ * So skip all other imports and declare them in 'cpr.cxx'.
+ **/
+#ifndef CPR_IMPORT_STD
 #include <cstddef>
 #include <cstdint>
 #include <functional>
@@ -12,8 +17,6 @@
 #include <type_traits>
 #include <utility>
 #endif
-
-#include <cstdint>
 
 // Forward declaration keeps the optional Boost dependency out of cpr's public headers.
 namespace boost::asio {
@@ -44,7 +47,7 @@ namespace cpr {
  * pool.Start();
  * @endcode
  **/
-class ThreadPool {
+EXPORT_CPR class ThreadPool {
   public:
     /** Whether workers may take queued tasks; STOP can still have active workers finishing tasks. */
     enum class State : uint8_t {
@@ -58,7 +61,7 @@ class ThreadPool {
      * Default maximum, initialized to hardware concurrency or one when it is unknown.
      * Set this before constructing pools, without concurrent access to this variable.
      **/
-    CPR_EXPORT static size_t DEFAULT_MAX_THREAD_COUNT;
+    static size_t DEFAULT_MAX_THREAD_COUNT;
 
     /**
      * Creates and starts a pool with the requested limits.

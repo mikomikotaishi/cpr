@@ -8,6 +8,7 @@
  * So skip all other imports and declare them in 'cpr.cxx'.
  **/
 #ifndef CPR_IMPORT_STD
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <utility>
@@ -20,8 +21,6 @@
 #include "cpr/error.h"
 #include "cpr/ssl_options.h"
 #include "cpr/util.h"
-#include <cassert>
-#include <cstdint>
 
 namespace cpr {
 

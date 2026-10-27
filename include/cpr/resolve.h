@@ -8,11 +8,10 @@
  * So skip all other imports and declare them in 'cpr.cxx'.
  **/
 #ifndef CPR_IMPORT_STD
+#include <cstdint>
 #include <set>
 #include <string>
 #endif
-
-#include <cstdint>
 
 namespace cpr {
 EXPORT_CPR class Resolve {

@@ -3,8 +3,15 @@
 
 #include "cpr/export.h"
 
-#include "cpr/filesystem.h"
+/**
+ * If we build cpr as C++20 module, we use 'import std;'.
+ * So skip all other imports and declare them in 'cpr.cxx'.
+ **/
+#ifndef CPR_IMPORT_STD
 #include <cstddef>
+#endif
+
+#include "cpr/filesystem.h"
 
 namespace cpr {
 

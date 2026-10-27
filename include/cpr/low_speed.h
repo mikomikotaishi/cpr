@@ -9,9 +9,8 @@
  **/
 #ifndef CPR_IMPORT_STD
 #include <chrono>
-#endif
-
 #include <cstdint>
+#endif
 
 namespace cpr {
 

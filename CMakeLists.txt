@@ -1,4 +1,17 @@
 cmake_minimum_required(VERSION 3.24)
+if(CPR_BUILD_MODULES AND NOT CMAKE_EXPERIMENTAL_CXX_IMPORT_STD AND NOT CMAKE_CXX_MODULE_STD)
+    if(CMAKE_VERSION VERSION_LESS "3.30")
+        message(FATAL_ERROR "CPR_BUILD_MODULES requires CMake 3.30 or newer for `import std` support (found ${CMAKE_VERSION}).")
+    elseif(CMAKE_VERSION VERSION_LESS_EQUAL "3.31.7")
+        set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "0e5b6991-d74f-4b3d-a41c-cf096e0b2508")
+    elseif(CMAKE_VERSION VERSION_LESS_EQUAL "4.2.3")
+        set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "d0edc3af-4c50-42ea-a356-e2862fe7a444")
+    elseif(CMAKE_VERSION VERSION_LESS_EQUAL "4.3.4")
+        set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "451f2fe2-a8a2-47c3-bc32-94786d8fc91b")
+    else()
+        set(CMAKE_EXPERIMENTAL_CXX_IMPORT_STD "f35a9ac6-8463-4d38-8eec-5d6008153e7d")
+    endif()
+endif()
 project(cpr VERSION 1.15.1 LANGUAGES CXX)
 
 math(EXPR cpr_VERSION_NUM "${cpr_VERSION_MAJOR} * 0x10000 + ${cpr_VERSION_MINOR} * 0x100 + ${cpr_VERSION_PATCH}" OUTPUT_FORMAT HEXADECIMAL)
@@ -113,8 +126,6 @@ if(CPR_BUILD_MODULES AND NOT CMAKE_EXPERIMENTAL_CXX_IMPORT_STD AND NOT CMAKE_CXX
     # FetchContent dependencies (zlib, curl, googletest), which then demand C++ standard library
     # module metadata they neither use nor ship. `cpr_module` opts in via its own target property.
 endif()
-
-project(cpr VERSION 1.15.0 LANGUAGES CXX)
 
 math(EXPR cpr_VERSION_NUM "${cpr_VERSION_MAJOR} * 0x10000 + ${cpr_VERSION_MINOR} * 0x100 + ${cpr_VERSION_PATCH}" OUTPUT_FORMAT HEXADECIMAL)
 configure_file("${cpr_SOURCE_DIR}/cmake/cprver.h.in" "${cpr_BINARY_DIR}/cpr_generated_includes/cpr/cprver.h")
