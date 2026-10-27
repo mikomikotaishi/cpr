@@ -28,8 +28,8 @@ EXPORT_CPR enum class AcceptEncodingMethods : uint8_t {
     disabled,
 };
 
-// NOLINTNEXTLINE(cert-err58-cpp)
-EXPORT_CPR inline const std::map<AcceptEncodingMethods, std::string> AcceptEncodingMethodsStringMap{{AcceptEncodingMethods::identity, "identity"}, {AcceptEncodingMethods::deflate, "deflate"}, {AcceptEncodingMethods::zlib, "zlib"}, {AcceptEncodingMethods::gzip, "gzip"}, {AcceptEncodingMethods::disabled, "disabled"}};
+// NOLINTNEXTLINE(cert-err58-cpp, bugprone-throwing-static-initialization) If we throw here, more is broken since everything is already known at compile time.
+inline const std::map<AcceptEncodingMethods, std::string> AcceptEncodingMethodsStringMap{{AcceptEncodingMethods::identity, "identity"}, {AcceptEncodingMethods::deflate, "deflate"}, {AcceptEncodingMethods::zlib, "zlib"}, {AcceptEncodingMethods::gzip, "gzip"}, {AcceptEncodingMethods::disabled, "disabled"}};
 
 EXPORT_CPR class AcceptEncoding {
   public:

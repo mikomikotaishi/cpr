@@ -13,8 +13,8 @@
 | Release                   | Min. C++ Standard | Status                   | Notes |
 |---------------------------|-------------------|--------------------------|-------|
 | master                    | `cpp17`           | ![alt text][preview]     |       |
-| 1.14.x                    | `cpp17`           | ![alt text][supported]   |       |
-| 1.10.x - 1.13.x           | `cpp17`           | ![alt text][unsupported] |       |
+| 1.15.x                    | `cpp17`           | ![alt text][supported]   |       |
+| 1.10.x - 1.14.x           | `cpp17`           | ![alt text][unsupported] |       |
 | <= 1.9.x                  | `cpp11`           | ![alt text][unsupported] |       |
 
 [unsupported]: https://img.shields.io/badge/-unsupported-red "unsupported"
@@ -94,7 +94,7 @@ Add the following to your `CMakeLists.txt`.
 ```cmake
 include(FetchContent)
 FetchContent_Declare(cpr GIT_REPOSITORY https://github.com/libcpr/cpr.git
-                         GIT_TAG f091b2c061b307ee89b164c39976fc9202a1c79d.12.0) # Replace with your desired git commit from: https://github.com/libcpr/cpr/releases
+                         GIT_TAG 3139b2682f0b1d6af8c7ae48cf400f9d9988deec) # Replace with your desired git commit from: https://github.com/libcpr/cpr/releases
 FetchContent_MakeAvailable(cpr)
 ```
 

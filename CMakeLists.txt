@@ -1,4 +1,41 @@
-cmake_minimum_required(VERSION 3.18...4.3)
+cmake_minimum_required(VERSION 3.24)
+project(cpr VERSION 1.15.1 LANGUAGES CXX)
+
+math(EXPR cpr_VERSION_NUM "${cpr_VERSION_MAJOR} * 0x10000 + ${cpr_VERSION_MINOR} * 0x100 + ${cpr_VERSION_PATCH}" OUTPUT_FORMAT HEXADECIMAL)
+configure_file("${cpr_SOURCE_DIR}/cmake/cprver.h.in" "${cpr_BINARY_DIR}/cpr_generated_includes/cpr/cprver.h")
+
+# Only change the folder behavior if cpr is not a subproject
+if(${CMAKE_PROJECT_NAME} STREQUAL ${PROJECT_NAME})
+    set_property(GLOBAL PROPERTY USE_FOLDERS ON)
+    set_property(GLOBAL PROPERTY PREDEFINED_TARGETS_FOLDER "CMake")
+    set(EXECUTABLE_OUTPUT_PATH ${CMAKE_BINARY_DIR}/bin)
+    set(LIBRARY_OUTPUT_PATH ${CMAKE_BINARY_DIR}/lib)
+    set(CMAKE_EXPORT_COMPILE_COMMANDS ON) # generate compile_commands.json to be used by other tools (e.g. vs code)
+else()
+    # Check required c++ standard of parent project
+    if(CMAKE_CXX_STANDARD)
+        set(PARENT_CXX_STANDARD ${CMAKE_CXX_STANDARD})
+        message(STATUS "CXX standard of parent project: ${PARENT_CXX_STANDARD}")
+    endif()
+endif()
+
+# Avoid the dll boilerplate code for windows
+set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+
+if (PARENT_CXX_STANDARD)
+    # Don't set CMAKE_CXX_STANDARD if it is already set by parent project
+    if (PARENT_CXX_STANDARD LESS 17)
+        message(FATAL_ERROR "cpr ${cpr_VERSION} does not support ${PARENT_CXX_STANDARD}. Please use cpr <= 1.9.x")
+    endif()
+else()
+    # Set standard version if not already set by potential parent project
+    set(CMAKE_CXX_STANDARD 17)
+endif()
+
+message(STATUS "CXX standard: ${CMAKE_CXX_STANDARD}")
+set(CMAKE_CXX_STANDARD_REQUIRED ON)
+
+set(CPR_LIBRARIES cpr CACHE INTERNAL "")
 
 macro(cpr_option OPTION_NAME OPTION_TEXT OPTION_DEFAULT)
     option(${OPTION_NAME} ${OPTION_TEXT} ${OPTION_DEFAULT})
@@ -17,6 +54,7 @@ endmacro()
 
 message(STATUS "C++ Requests CMake Options")
 message(STATUS "=======================================================")
+option(CPR_WARNINGS_AS_ERRORS "Treat warnings as errors when building cpr." ${PROJECT_IS_TOP_LEVEL})
 cpr_option(CPR_ENABLE_INSTALL "Set to ON to enable all cpr install targets." ON)
 cpr_option(CPR_GENERATE_COVERAGE "Set to ON to generate coverage reports." OFF)
 cpr_option(CPR_CURL_NOSIGNAL "Set to ON to disable use of signals in libcurl." OFF)
@@ -25,14 +63,17 @@ cpr_option(CPR_USE_SYSTEM_GTEST "If ON, this project will look in the system pat
 cpr_option(CPR_USE_SYSTEM_CURL "If enabled we will use the curl lib already installed on this system." OFF)
 cpr_option(CPR_USE_EXISTING_CURL_TARGET "Use an existing libcurl cmake target instead of having the cpr project source the dependency itself." OFF)
 cpr_option(CPR_CURL_USE_LIBPSL "Since curl 8.13 curl depends on libpsl (https://everything.curl.dev/build/deps.html#libpsl). By default cpr keeps this as a secure default enabled wich in turn requires meson as build dependency. If set to OFF, psl support inside curl will be disabled." ON)
+cpr_option(CPR_CURL_USE_NGHTTP2 "If enabled, built-in curl will use nghttp2 for HTTP/2 support if available. Set to OFF to disable nghttp2 in built-in curl." ON)
 cpr_option(CPR_USE_SYSTEM_LIB_PSL "If enabled we will use the psl lib already installed on this system. Else meson is required as build dependency. Only relevant in case 'CPR_CURL_USE_LIBPSL' is set to ON." ${CPR_USE_SYSTEM_CURL})
 cpr_option(CPR_ENABLE_CURL_HTTP_ONLY "If enabled we will only use the HTTP/HTTPS protocols from CURL. If disabled, all the CURL protocols are enabled. This is useful if your project uses libcurl and you need support for other CURL features e.g. sending emails." ON)
 cpr_option(CPR_ENABLE_SSL "Enables or disables the SSL backend. Required to perform HTTPS requests." ON)
-cpr_option(CPR_FORCE_OPENSSL_BACKEND "Force to use the OpenSSL backend. If CPR_FORCE_OPENSSL_BACKEND, CPR_FORCE_DARWINSSL_BACKEND, CPR_FORCE_MBEDTLS_BACKEND, and CPR_FORCE_WINSSL_BACKEND are set to to OFF, cpr will try to automatically detect the best available SSL backend (WinSSL - Windows, OpenSSL - Linux, DarwinSSL - Mac ...)." OFF)
-cpr_option(CPR_FORCE_WINSSL_BACKEND "Force to use the WinSSL backend. If CPR_FORCE_OPENSSL_BACKEND, CPR_FORCE_DARWINSSL_BACKEND, CPR_FORCE_MBEDTLS_BACKEND, and CPR_FORCE_WINSSL_BACKEND are set to to OFF, cpr will try to automatically detect the best available SSL backend (WinSSL - Windows, OpenSSL - Linux, DarwinSSL - Mac ...)." OFF)
-cpr_option(CPR_FORCE_DARWINSSL_BACKEND "Force to use the DarwinSSL backend. If CPR_FORCE_OPENSSL_BACKEND, CPR_FORCE_DARWINSSL_BACKEND, CPR_FORCE_MBEDTLS_BACKEND, and CPR_FORCE_WINSSL_BACKEND are set to to OFF, cpr will try to automatically detect the best available SSL backend (WinSSL - Windows, OpenSSL - Linux, DarwinSSL - Mac ...)." OFF)
-cpr_option(CPR_FORCE_MBEDTLS_BACKEND "Force to use the Mbed TLS backend. If CPR_FORCE_OPENSSL_BACKEND, CPR_FORCE_DARWINSSL_BACKEND, CPR_FORCE_MBEDTLS_BACKEND, and CPR_FORCE_WINSSL_BACKEND are set to to OFF, cpr will try to automatically detect the best available SSL backend (WinSSL - Windows, OpenSSL - Linux, DarwinSSL - Mac ...)." OFF)
+cpr_option(CPR_FORCE_OPENSSL_BACKEND "Force to use the OpenSSL backend. If CPR_FORCE_OPENSSL_BACKEND, CPR_FORCE_DARWINSSL_BACKEND, CPR_FORCE_MBEDTLS_BACKEND, CPR_FORCE_WINSSL_BACKEND and CPR_FORCE_WOLFSSL_BACKEND are set to to OFF, cpr will try to automatically detect the best available SSL backend (WinSSL - Windows, OpenSSL - Linux, DarwinSSL - Mac ...)." OFF)
+cpr_option(CPR_FORCE_WINSSL_BACKEND "Force to use the WinSSL backend. If CPR_FORCE_OPENSSL_BACKEND, CPR_FORCE_DARWINSSL_BACKEND, CPR_FORCE_MBEDTLS_BACKEND, CPR_FORCE_WINSSL_BACKEND and CPR_FORCE_WOLFSSL_BACKEND are set to to OFF, cpr will try to automatically detect the best available SSL backend (WinSSL - Windows, OpenSSL - Linux, DarwinSSL - Mac ...)." OFF)
+cpr_option(CPR_FORCE_DARWINSSL_BACKEND "Force to use DarwinSSL via system curl or an existing curl target. Bundled curl no longer supports Secure Transport since curl 8.15.0." OFF)
+cpr_option(CPR_FORCE_MBEDTLS_BACKEND "Force to use the Mbed TLS backend. If CPR_FORCE_OPENSSL_BACKEND, CPR_FORCE_DARWINSSL_BACKEND, CPR_FORCE_MBEDTLS_BACKEND, CPR_FORCE_WINSSL_BACKEND and CPR_FORCE_WOLFSSL_BACKEND are set to to OFF, cpr will try to automatically detect the best available SSL backend (WinSSL - Windows, OpenSSL - Linux, DarwinSSL - Mac ...)." OFF)
+cpr_option(CPR_FORCE_WOLFSSL_BACKEND "Force to use the WolfSSL backend. If CPR_FORCE_OPENSSL_BACKEND, CPR_FORCE_DARWINSSL_BACKEND, CPR_FORCE_MBEDTLS_BACKEND, CPR_FORCE_WINSSL_BACKEND and CPR_FORCE_WOLFSSL_BACKEND are set to to OFF, cpr will try to automatically detect the best available SSL backend (WinSSL - Windows, OpenSSL - Linux, DarwinSSL - Mac ...)." OFF)
 cpr_option(CPR_ENABLE_LINTING "Set to ON to enable clang linting." OFF)
+cpr_option(CPR_ENABLE_LINTING_AUTO_FIX "Set to ON to enable clang-tidy automatically applying fixes." OFF)
 cpr_option(CPR_ENABLE_CPPCHECK "Set to ON to enable Cppcheck static analysis. Requires CPR_BUILD_TESTS and CPR_BUILD_TESTS_SSL to be OFF to prevent checking google tests source code." OFF)
 cpr_option(CPR_BUILD_MODULES "Set to ON to build cpr as a C++ module." OFF)
 cpr_option(CPR_BUILD_TESTS "Set to ON to build cpr tests." OFF)
@@ -46,6 +87,12 @@ cpr_option(CPR_DEBUG_SANITIZER_FLAG_ADDR "Enables the AddressSanitizer for debug
 cpr_option(CPR_DEBUG_SANITIZER_FLAG_LEAK "Enables the LeakSanitizer for debug builds." OFF)
 cpr_option(CPR_DEBUG_SANITIZER_FLAG_UB "Enables the UndefinedBehaviorSanitizer for debug builds." OFF)
 cpr_option(CPR_DEBUG_SANITIZER_FLAG_ALL "Enables all sanitizers for debug builds except the ThreadSanitizer since it is incompatible with the other sanitizers." OFF)
+set(CPR_THREAD_POOL "BUILTIN" CACHE STRING "Thread pool backend: BUILTIN or BOOST_ASIO")
+set_property(CACHE CPR_THREAD_POOL PROPERTY STRINGS BUILTIN BOOST_ASIO)
+if(NOT CPR_THREAD_POOL STREQUAL "BUILTIN" AND NOT CPR_THREAD_POOL STREQUAL "BOOST_ASIO")
+    message(FATAL_ERROR "Invalid CPR_THREAD_POOL '${CPR_THREAD_POOL}'. Choose BUILTIN or BOOST_ASIO.")
+endif()
+message(STATUS "  CPR_THREAD_POOL: ${CPR_THREAD_POOL}")
 message(STATUS "=======================================================")
 
 # If we build cpr as C++20 module, we use `import std;`. This block enables it for different CMake versions.
@@ -144,7 +191,7 @@ include(cmake/code_coverage.cmake)
 include(cmake/sanitizer.cmake)
 include(cmake/clear_variable.cmake)
 
-# So CMake can find FindMbedTLS.cmake
+# So CMake can find FindMbedTLS.cmake and FindWolfSSL.cmake
 set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake;${CMAKE_MODULE_PATH}")
 
 # Linting
@@ -163,8 +210,8 @@ endif()
 
 # SSL
 if(CPR_ENABLE_SSL)
-    if(CPR_FORCE_OPENSSL_BACKEND OR CPR_FORCE_WINSSL_BACKEND OR CPR_FORCE_DARWINSSL_BACKEND OR CPR_FORCE_MBEDTLS_BACKEND)
-        message(STATUS "Disabled SSL backend auto detect since either CPR_FORCE_OPENSSL_BACKEND, CPR_FORCE_DARWINSSL_BACKEND, CPR_FORCE_MBEDTLS_BACKEND, or CPR_FORCE_WINSSL_BACKEND is enabled.")
+    if(CPR_FORCE_OPENSSL_BACKEND OR CPR_FORCE_WINSSL_BACKEND OR CPR_FORCE_DARWINSSL_BACKEND OR CPR_FORCE_MBEDTLS_BACKEND OR CPR_FORCE_WOLFSSL_BACKEND)
+        message(STATUS "Disabled SSL backend auto detect since either CPR_FORCE_OPENSSL_BACKEND, CPR_FORCE_DARWINSSL_BACKEND, CPR_FORCE_MBEDTLS_BACKEND, CPR_FORCE_WINSSL_BACKEND, or CPR_FORCE_WOLFSSL_BACKEND is enabled.")
         set(DETECT_SSL_BACKEND OFF CACHE INTERNAL "" FORCE)
     else()
         message(STATUS "Automatically detecting SSL backend.")
@@ -181,14 +228,13 @@ if(CPR_ENABLE_SSL)
         if(WIN32)
             message(STATUS "SSL auto detect: Using WinSSL.")
             set(SSL_BACKEND_USED "WinSSL")
-        elseif(APPLE)
+        elseif(APPLE AND (CPR_USE_SYSTEM_CURL OR CPR_USE_EXISTING_CURL_TARGET))
             message(STATUS "SSL auto detect: Using DarwinSSL.")
             set(CPR_BUILD_TESTS_SSL OFF)
             set(SSL_BACKEND_USED "DarwinSSL")
         else()
             find_package(OpenSSL)
-
-            if(OPENSSL_FOUND)
+            if(OpenSSL_FOUND)
                 message(STATUS "SSL auto detect: Using OpenSSL.")
                 set(SSL_BACKEND_USED "OpenSSL")
             else()
@@ -197,15 +243,21 @@ if(CPR_ENABLE_SSL)
                 if(MBEDTLS_FOUND)
                     set(SSL_BACKEND_USED "MbedTLS")
                 else()
-                    message(FATAL_ERROR "No valid SSL backend found! Please install OpenSSL, Mbed TLS or disable SSL by setting CPR_ENABLE_SSL to OFF.")
+                    find_package(WolfSSL)
+                    if(WOLFSSL_FOUND)
+                        message(STATUS "SSL auto detect: Using wolfSSL.")
+                        set(CPR_BUILD_TESTS_SSL OFF)
+                        set(SSL_BACKEND_USED "WolfSSL")
+                    else()
+                        message(FATAL_ERROR "No valid SSL backend found! Please install OpenSSL, Mbed TLS, WolfSSL or disable SSL by setting CPR_ENABLE_SSL to OFF.")
+                    endif()
                 endif()
             endif()
         endif()
     else()
         if(CPR_FORCE_OPENSSL_BACKEND)
             find_package(OpenSSL)
-
-            if(OPENSSL_FOUND)
+            if(OpenSSL_FOUND)
                 message(STATUS "Using OpenSSL.")
                 set(SSL_BACKEND_USED "OpenSSL")
             else()
@@ -215,6 +267,9 @@ if(CPR_ENABLE_SSL)
             message(STATUS "Using WinSSL.")
             set(SSL_BACKEND_USED "WinSSL")
         elseif(CPR_FORCE_DARWINSSL_BACKEND)
+            if(NOT CPR_USE_SYSTEM_CURL AND NOT CPR_USE_EXISTING_CURL_TARGET)
+                message(FATAL_ERROR "Bundled curl no longer supports DarwinSSL (Secure Transport) since curl 8.15.0. Set CPR_USE_SYSTEM_CURL to ON to use Apple's curl, or select another SSL backend.")
+            endif()
             message(STATUS "Using DarwinSSL.")
             set(CPR_BUILD_TESTS_SSL OFF)
             set(SSL_BACKEND_USED "DarwinSSL")
@@ -222,6 +277,11 @@ if(CPR_ENABLE_SSL)
             message(STATUS "Using Mbed TLS.")
             set(CPR_BUILD_TESTS_SSL OFF)
             set(SSL_BACKEND_USED "MbedTLS")
+        elseif(CPR_FORCE_WOLFSSL_BACKEND)
+            find_package(WolfSSL REQUIRED)
+            message(STATUS "Using wolfSSL.")
+            set(CPR_BUILD_TESTS_SSL OFF)
+            set(SSL_BACKEND_USED "WolfSSL")
         endif()
     endif()
 endif()
@@ -266,11 +326,15 @@ elseif(CPR_USE_SYSTEM_CURL)
     endif()
 
     # Check for the minimum supported curl version
-    if(NOT(CURL_VERSION_STRING VERSION_GREATER_EQUAL "7.64.0"))
+    if(NOT (CURL_VERSION_STRING VERSION_GREATER_EQUAL "7.64.0"))
         message(FATAL_ERROR "Your system curl version (${CURL_VERSION_STRING}) is too old! curl >= 7.64.0 is required. Update your curl version, or use the build in curl version e.g. via `cmake .. -DCPR_USE_SYSTEM_CURL=OFF` during CMake configure.")
     endif()
 else()
     message(STATUS "Configuring built-in curl...")
+
+    if (NOT CPR_CURL_USE_NGHTTP2)
+        set(USE_NGHTTP2 OFF CACHE INTERNAL "" FORCE)
+    endif()
 
     # ZLIB is optional for curl
     # to disable it:
@@ -320,12 +384,16 @@ else()
             set(CURL_USE_OPENSSL ON CACHE INTERNAL "" FORCE)
         endif()
 
-        if(SSL_BACKEND_USED STREQUAL "DarwinSSL")
-            set(CURL_USE_SECTRANSP ON CACHE INTERNAL "" FORCE)
-        endif()
-
         if(SSL_BACKEND_USED STREQUAL "MbedTLS")
             set(CURL_USE_MBEDTLS ON CACHE INTERNAL "" FORCE)
+        endif()
+
+        if(SSL_BACKEND_USED STREQUAL "WolfSSL")
+            # Avoid retaining OpenSSL when reconfiguring an existing build.
+            set(CURL_USE_OPENSSL OFF CACHE INTERNAL "" FORCE)
+            set(CURL_USE_WOLFSSL ON CACHE INTERNAL "" FORCE)
+        else()
+            set(CURL_USE_WOLFSSL OFF CACHE INTERNAL "" FORCE)
         endif()
 
         message(STATUS "Enabled curl SSL")
@@ -336,8 +404,8 @@ else()
         set(CURL_USE_SCHANNEL OFF CACHE INTERNAL "" FORCE)
         set(CURL_WINDOWS_SSPI OFF CACHE INTERNAL "" FORCE)
         set(CURL_USE_OPENSSL OFF CACHE INTERNAL "" FORCE)
-        set(CURL_USE_SECTRANSP OFF CACHE INTERNAL "" FORCE)
         set(CURL_USE_MBEDTLS OFF CACHE INTERNAL "" FORCE)
+        set(CURL_USE_WOLFSSL OFF CACHE INTERNAL "" FORCE)
         message(STATUS "Disabled curl SSL")
     endif()
 
@@ -355,8 +423,8 @@ else()
         include(libpsl)
     endif()
 
-    FetchContent_Declare(curl URL https://github.com/curl/curl/releases/download/curl-8_13_0/curl-8.13.0.tar.xz
-        URL_HASH SHA256=4a093979a3c2d02de2fbc00549a32771007f2e78032c6faa5ecd2f7a9e152025) # the file hash for curl-8.13.0.tar.xz
+    FetchContent_Declare(curl URL https://github.com/curl/curl/releases/download/curl-8_22_0/curl-8.22.0.tar.xz
+                              URL_HASH SHA256=f7ef3ae8a22e521f289803fe93543eb64c329b58aa73a9e224dfd915a2a5f4f7) # the file hash for curl-8.22.0.tar.xz
     FetchContent_MakeAvailable(curl)
 
     restore_variable(DESTINATION CMAKE_CXX_CLANG_TIDY BACKUP CMAKE_CXX_CLANG_TIDY_BKP)
@@ -391,9 +459,9 @@ if(CPR_BUILD_TESTS)
         clear_variable(DESTINATION CMAKE_CXX_CLANG_TIDY BACKUP CMAKE_CXX_CLANG_TIDY_BKP)
 
         FetchContent_Declare(googletest
-            URL https://github.com/google/googletest/archive/refs/tags/v1.14.0.tar.gz
-            URL_HASH SHA256=8ad598c73ad796e0d8280b082cebd82a630d73e73cd3c70057938a6501bba5d7 # the file hash for release-1.14.0.tar.gz
-            USES_TERMINAL_DOWNLOAD TRUE) # <---- This is needed only for Ninja to show download progress
+                             URL                    https://github.com/google/googletest/archive/refs/tags/v1.18.0.tar.gz
+                             URL_HASH               SHA256=6e3191c1455468b3fc35a417fb565c1c5071aee1b7e7f85e30cf48a98d37d8b5 # the file hash for release-1.18.0.tar.gz
+                             USES_TERMINAL_DOWNLOAD TRUE)   # <---- This is needed only for Ninja to show download progress
         FetchContent_MakeAvailable(googletest)
 
         restore_variable(DESTINATION CMAKE_CXX_CLANG_TIDY BACKUP CMAKE_CXX_CLANG_TIDY_BKP)
@@ -432,12 +500,11 @@ if(CPR_BUILD_TESTS)
     clear_variable(DESTINATION CMAKE_CXX_CLANG_TIDY BACKUP CMAKE_CXX_CLANG_TIDY_BKP)
 
     FetchContent_Declare(mongoose
-        URL https://github.com/cesanta/mongoose/archive/7.7.tar.gz
-        URL_HASH SHA256=4e5733dae31c3a81156af63ca9aa3a6b9b736547f21f23c3ab2f8e3f1ecc16c0 # the hash for 7.7.tar.gz
-        USES_TERMINAL_DOWNLOAD TRUE # This is needed only for Ninja to show download progress
-        SOURCE_SUBDIR "?") # Nonexistent directory to prevent FetchContent_MakeAvailable from calling add_subdirectory and duplicating the mongoose target
-
-    if(NOT mongoose_POPULATED)
+                         URL                    https://github.com/cesanta/mongoose/archive/7.23.tar.gz
+                         URL_HASH               SHA256=93208f164038b05d156935b8b725063e1afb3984a362dbcf3a9ea37b6f1f2255 # the hash for 7.23.tar.gz
+                         USES_TERMINAL_DOWNLOAD TRUE # This is needed only for Ninja to show download progress
+                         SOURCE_SUBDIR          "?") # Nonexistent directory to prevent FetchContent_MakeAvailable from calling add_subdirectory and duplicating the mongoose target
+    if (NOT mongoose_POPULATED)
         FetchContent_MakeAvailable(mongoose)
 
         file(INSTALL cmake/mongoose.CMakeLists.txt DESTINATION ${mongoose_SOURCE_DIR})
@@ -450,16 +517,15 @@ if(CPR_BUILD_TESTS)
     restore_variable(DESTINATION CMAKE_CXX_CLANG_TIDY BACKUP CMAKE_CXX_CLANG_TIDY_BKP)
 endif()
 
-if("${CMAKE_CXX_COMPILER_ID}" STREQUAL "MSVC")
-else()
-    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic -Werror")
-
-    if(CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
+if(NOT MSVC)
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall -Wextra -Wpedantic")
+    if (CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
         # Disable C++98 compatibility support in clang: https://github.com/libcpr/cpr/issues/927
         set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wno-c++98-compat -Wno-c++98-compat-pedantic -Wno-nonportable-system-include-path -Wno-exit-time-destructors -Wno-undef -Wno-global-constructors -Wno-switch-enum -Wno-old-style-cast -Wno-covered-switch-default -Wno-undefined-func-template")
     endif()
 endif()
 
+set(CMAKE_COMPILE_WARNING_AS_ERROR ${CPR_WARNINGS_AS_ERRORS})
 add_subdirectory(cpr)
 add_subdirectory(include)
 

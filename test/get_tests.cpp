@@ -276,6 +276,35 @@ TEST(BasicAuthenticationTests, BasicDigestSuccessTest) {
     EXPECT_EQ(ErrorCode::OK, response.error.code);
 }
 
+TEST(BasicAuthenticationTests, RejectMalformedBasicScheme) {
+    Url url{server->GetBaseUrl() + "/basic_auth.html"};
+    for (const char* authorization : {"BasicX dXNlcjpwYXNzd29yZA==", "Basic", "B"}) {
+        SCOPED_TRACE(authorization);
+        Response response = cpr::Get(url, Header{{"Authorization", authorization}});
+        EXPECT_EQ(401, response.status_code);
+        EXPECT_EQ(ErrorCode::OK, response.error.code);
+    }
+}
+
+TEST(BasicAuthenticationTests, RejectMalformedBearerScheme) {
+    Url url{server->GetBaseUrl() + "/bearer_token.html"};
+    for (const char* authorization : {"BearerX the_token", "Bearer", "B"}) {
+        SCOPED_TRACE(authorization);
+        Response response = cpr::Get(url, Header{{"Authorization", authorization}});
+        EXPECT_EQ(401, response.status_code);
+        EXPECT_EQ(ErrorCode::OK, response.error.code);
+    }
+}
+
+TEST(BasicAuthenticationTests, MixedCaseSchemes) {
+    Response basic = cpr::Get(Url{server->GetBaseUrl() + "/basic_auth.html"}, Header{{"Authorization", "bAsIc dXNlcjpwYXNzd29yZA=="}});
+    EXPECT_EQ(200, basic.status_code);
+    EXPECT_EQ(ErrorCode::OK, basic.error.code);
+    Response bearer = cpr::Get(Url{server->GetBaseUrl() + "/bearer_token.html"}, Header{{"Authorization", "bEaReR the_token"}});
+    EXPECT_EQ(200, bearer.status_code);
+    EXPECT_EQ(ErrorCode::OK, bearer.error.code);
+}
+
 TEST(BasicAthenticationParameterTests, BasicAuthenticationSuccessSingleParameterTest) {
     Url url{server->GetBaseUrl() + "/basic_auth.html"};
     Response response = cpr::Get(url, Authentication{"user", "password", AuthMode::BASIC}, Parameters{{"hello", "world"}});
@@ -471,7 +500,7 @@ TEST(HeaderTests, HeaderReflectUpdateHeaderAddSessionTest) {
  * https://github.com/whoshuu/cpr/issues/532
  **/
 TEST(HeaderTests, SessionHeaderReflectTest) {
-    std::unique_ptr<cpr::Session> session(new cpr::Session());
+    std::unique_ptr<cpr::Session> session = std::make_unique<cpr::Session>();
     session->SetUrl({server->GetBaseUrl() + "/header_reflect.html"});
     session->SetBody("Some Body to post");
     session->SetHeader({{"Content-Type", "application/json"}});
@@ -1275,8 +1304,10 @@ TEST(GetRedirectTests, BasicAuthenticationRedirectSuccessTest) {
     Response response = cpr::Get(url, Authentication{"user", "password", AuthMode::BASIC}, Header{{"RedirectLocation", "basic_auth.html"}}, Redirect(true, true));
     std::string expected_text{"Header reflect GET"};
     EXPECT_EQ(expected_text, response.text);
-    std::string resultUrl = "http://user:password@127.0.0.1:" + std::to_string(server->GetPort()) + "/basic_auth.html";
-    EXPECT_EQ(response.url, resultUrl);
+    const std::string resultUrl = server->GetBaseUrl() + "/basic_auth.html";
+    // Older curl versions include the authentication credentials in the effective URL.
+    const std::string authenticatedResultUrl = "http://user:password@127.0.0.1:" + std::to_string(server->GetPort()) + "/basic_auth.html";
+    EXPECT_TRUE(response.url == resultUrl || response.url == authenticatedResultUrl) << response.url;
     EXPECT_EQ(std::string{"text/html"}, response.header["content-type"]);
     EXPECT_EQ(200, response.status_code);
     EXPECT_EQ(ErrorCode::OK, response.error.code);
