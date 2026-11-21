@@ -59,6 +59,10 @@ class AbstractServer : public testing::Environment {
     std::condition_variable server_start_cv;
     std::condition_variable server_stop_cv;
     std::atomic<bool> should_run{false};
+    // Guarded by server_mutex. Checked as wait predicates so a notification sent
+    // before the waiting thread reaches wait() is not lost.
+    bool server_started{false};
+    bool server_stopped{false};
     std::set<int> unique_connections;
 
     void Run();

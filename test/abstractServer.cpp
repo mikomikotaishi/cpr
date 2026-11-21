@@ -10,17 +10,22 @@ void AbstractServer::TearDown() {
 }
 
 void AbstractServer::Start() {
+    {
+        const std::lock_guard<std::mutex> server_lock(server_mutex);
+        server_started = false;
+        server_stopped = false;
+    }
     should_run = true;
     serverThread = std::make_shared<std::thread>(&AbstractServer::Run, this);
     serverThread->detach();
     std::unique_lock<std::mutex> server_lock(server_mutex);
-    server_start_cv.wait(server_lock);
+    server_start_cv.wait(server_lock, [this] { return server_started; });
 }
 
 void AbstractServer::Stop() {
     should_run = false;
     std::unique_lock<std::mutex> server_lock(server_mutex);
-    server_stop_cv.wait(server_lock);
+    server_stop_cv.wait(server_lock, [this] { return server_stopped; });
 }
 
 static void EventHandler(mg_connection* conn, int event, void* event_data) {
@@ -47,8 +52,14 @@ void AbstractServer::Run() {
     memset(&mgr, 0, sizeof(mg_mgr));
     initServer(&mgr, EventHandler);
 
-    // Notify the main thread that the server is up and runing:
-    server_start_cv.notify_all();
+    // Notify the main thread that the server is up and running:
+    {
+        const std::lock_guard<std::mutex> server_lock(server_mutex);
+        server_started = true;
+        // Notify while holding the lock: once the waiter sees the flag it may
+        // destroy this server, so the condition variable must not be touched after.
+        server_start_cv.notify_all();
+    }
 
     // Main server loop:
     while (should_run) {
@@ -61,7 +72,13 @@ void AbstractServer::Run() {
     mg_mgr_free(&mgr);
 
     // Notify the main thread that we have shut down everything:
-    server_stop_cv.notify_all();
+    {
+        const std::lock_guard<std::mutex> server_lock(server_mutex);
+        server_stopped = true;
+        // Notify while holding the lock: once the waiter sees the flag it may
+        // destroy this server, so the condition variable must not be touched after.
+        server_stop_cv.notify_all();
+    }
 }
 
 void AbstractServer::AddConnection(int remote_port) {

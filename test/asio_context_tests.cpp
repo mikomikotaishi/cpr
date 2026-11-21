@@ -4,6 +4,7 @@
 #include <memory>
 #include <stdexcept>
 #include <thread>
+#include <tuple>
 #include <vector>
 
 #include <boost/asio/executor_work_guard.hpp>
@@ -85,7 +86,7 @@ TEST(AsioContextTests, PendingHandlersAreSafeAfterPoolDestruction) {
         canceled = pool.Submit([] { return 42; });
     }
     EXPECT_EQ(canceled.wait_for(0ms), std::future_status::ready);
-    EXPECT_THROW(canceled.get(), std::future_error);
+    EXPECT_THROW(std::ignore = canceled.get(), std::future_error);
     EXPECT_NO_THROW(context.run());
 }
 

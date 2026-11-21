@@ -10,6 +10,7 @@
 #include <mutex>
 #include <stdexcept>
 #include <thread>
+#include <tuple>
 #include <vector>
 
 #include "cpr/threadpool.h"
@@ -195,7 +196,7 @@ TEST(ThreadPoolTests, MoveOnlyArgumentsAndCallable) {
 TEST(ThreadPoolTests, ExceptionsPropagateAndWorkerSurvives) {
     cpr::ThreadPool tp(0, 1);
     auto result = tp.Submit([]() -> int { throw std::runtime_error("task failure"); });
-    EXPECT_THROW(result.get(), std::runtime_error);
+    EXPECT_THROW(std::ignore = result.get(), std::runtime_error);
     EXPECT_EQ(tp.Submit([] { return 42; }).get(), 42);
 }
 

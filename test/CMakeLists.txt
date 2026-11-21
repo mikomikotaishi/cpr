@@ -91,6 +91,8 @@ add_test(NAME cpr_threadpool_configuration
         -DCPR_TEST_BINARY_DIR=${PROJECT_BINARY_DIR}/threadpool-config-test
         -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/threadpool_configuration.cmake)
 if(CPR_ENABLE_INSTALL AND CPR_USE_SYSTEM_CURL)
+    # add_test() splits arguments on ';', so pass the prefix path list with '|' instead.
+    string(REPLACE ";" "|" CPR_TEST_PREFIX_PATH "${CMAKE_PREFIX_PATH}")
     add_test(NAME cpr_installed_threadpool_consumer
         COMMAND ${CMAKE_COMMAND}
             -DCPR_BUILD_DIR=${PROJECT_BINARY_DIR}
@@ -100,6 +102,12 @@ if(CPR_ENABLE_INSTALL AND CPR_USE_SYSTEM_CURL)
             -DCPR_TEST_CUSTOM_CONTEXT=$<STREQUAL:${CPR_THREAD_POOL},BOOST_ASIO>
             -DCPR_TEST_BOOST_ROOT=${Boost_INCLUDE_DIR}
             -DCPR_TEST_DISABLE_BOOST=$<AND:$<STREQUAL:${CPR_THREAD_POOL},BUILTIN>,$<NOT:$<BOOL:${CPR_USE_BOOST_FILESYSTEM}>>>
+            # Forward how the parent found its dependencies (e.g. vcpkg's curl) so the
+            # installed cprConfig.cmake can resolve them in the consumer project too.
+            "-DCPR_TEST_GENERATOR=${CMAKE_GENERATOR}"
+            "-DCPR_TEST_TOOLCHAIN_FILE=${CMAKE_TOOLCHAIN_FILE}"
+            "-DCPR_TEST_VCPKG_TARGET_TRIPLET=${VCPKG_TARGET_TRIPLET}"
+            "-DCPR_TEST_PREFIX_PATH=${CPR_TEST_PREFIX_PATH}"
             -P ${CMAKE_CURRENT_SOURCE_DIR}/cmake/threadpool_consumer.cmake)
 endif()
 add_cpr_test(testUtils)
