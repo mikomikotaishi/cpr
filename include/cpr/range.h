@@ -40,7 +40,7 @@ EXPORT_CPR class MultiRange {
     [[nodiscard]] const std::string str() const {
         std::string multi_range_string{};
         for (Range const range : ranges) {
-            multi_range_string += ((multi_range_string.empty()) ? "" : ", ") + range.str();
+            multi_range_string += (multi_range_string.empty() ? "" : ", ") + range.str();
         }
         return multi_range_string;
     }

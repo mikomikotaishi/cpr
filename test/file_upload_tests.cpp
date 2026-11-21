@@ -71,7 +71,7 @@ TEST(FileUploadTests, NonAsciiFileName) {
     ASSERT_NE(baseDirPath, std::nullopt);
 
     // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
-    const std::string filename{u8"test_file_hello_äüöp_2585.txt"};
+    const std::string filename{"test_file_hello_äüöp_2585.txt"};
     cpr::fs::path filePath = UnicodeTestPath(filename.c_str(), L"test_file_hello_äüöp_2585.txt");
 
     cpr::Multipart mp{{cpr::Part("file_name", cpr::File(baseDirPath->string() + filename))}};
@@ -101,7 +101,7 @@ TEST(FileUploadTests, ChineseFileName) {
     ASSERT_NE(baseDirPath, std::nullopt);
 
     // NOLINTNEXTLINE(bugprone-unchecked-optional-access)
-    const std::string filename{u8"test_file_hello_äüöp_2585_你好.txt"};
+    const std::string filename{"test_file_hello_äüöp_2585_你好.txt"};
     cpr::fs::path filePath = UnicodeTestPath(filename.c_str(), L"test_file_hello_äüöp_2585_你好.txt");
 
     cpr::Multipart mp{{cpr::Part("file_name", cpr::File(baseDirPath->string() + filename))}};
@@ -123,7 +123,7 @@ TEST(FileUploadTests, ChineseFileName) {
 
 TEST(FileUploadTests, StreamChineseFileName) {
     ASSERT_NE(baseDirPath, std::nullopt);
-    const std::string filename{u8"test_file_hello_äüöp_2585_你好.txt"};
+    const std::string filename{"test_file_hello_äüöp_2585_你好.txt"};
     const cpr::fs::path path = UnicodeTestPath(filename.c_str(), L"test_file_hello_äüöp_2585_你好.txt");
     auto file = std::make_shared<std::ifstream>(path.c_str(), std::ios::binary);
     ASSERT_TRUE(file->is_open());

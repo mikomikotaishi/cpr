@@ -37,7 +37,7 @@ EXPORT_CPR enum class PostRedirectFlags : uint8_t {
      * Default value.
      * * Convenience option to disable all flags.
      **/
-    NONE = 0x0
+    NONE = 0x0,
 };
 
 EXPORT_CPR PostRedirectFlags operator|(PostRedirectFlags lhs, PostRedirectFlags rhs);

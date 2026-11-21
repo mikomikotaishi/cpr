@@ -23,8 +23,8 @@ EXPORT_CPR class Timeout {
     Timeout(const std::int32_t& milliseconds) : Timeout{std::chrono::milliseconds(milliseconds)} {}
 
     // No way around since curl uses a long here.
-    // NOLINTNEXTLINE(google-runtime-int)
     [[nodiscard]]
+    // NOLINTNEXTLINE(google-runtime-int)
     long Milliseconds() const;
 
     std::chrono::milliseconds ms;

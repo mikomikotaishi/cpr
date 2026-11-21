@@ -50,12 +50,15 @@ jobs:
       run: ctest --test-dir build --output-on-failure --repeat until-pass:5
     - name: Verify Module Build
       run: |
-        echo "Contents of build/modules:"
-        ls -la build/modules/
-        if [ -f build/modules/libcpr_module.a ] || [ -f build/modules/libcpr_module.so ] || [ -f build/modules/cpr_module.a ] || find build/modules -name "*cpr_module*" -type f | grep -q .; then
+        # LIBRARY_OUTPUT_PATH places all libraries in build/lib, not build/modules.
+        echo "Searching for module library:"
+        found=$(find build/lib build/modules -type f \( -name 'libcpr_module*.a' -o -name 'libcpr_module*.so*' \) 2>/dev/null || true)
+        if [ -n "$found" ]; then
+          echo "$found"
           echo "Module library built successfully"
         else
           echo "Error: Module library not found"
+          ls -la build/lib build/modules || true
           exit 1
         fi
 
@@ -137,19 +140,20 @@ jobs:
       run: ctest --test-dir build -C Release --output-on-failure --repeat until-pass:5
     - name: Verify Module Build
       run: |
-        Write-Host "Contents of build/modules/Release:"
-        Get-ChildItem -Path build/modules/Release -Force
-        if (!(Test-Path "build/modules/Release/cpr_module.lib") -and !(Get-ChildItem -Path build/modules -Recurse -Filter "*cpr_module*")) {
+        # LIBRARY_OUTPUT_PATH places all libraries in build/lib, and Ninja is single-config (no Release/ subdir).
+        $found = Get-ChildItem -Path build/lib, build/modules -Recurse -File -Filter "cpr_module*.lib" -ErrorAction SilentlyContinue
+        if (-not $found) {
+          Get-ChildItem -Path build/lib -Force -ErrorAction SilentlyContinue
           throw "Module library not found"
         }
+        $found | ForEach-Object { Write-Host $_.FullName }
         Write-Host "Module library built successfully"
       shell: pwsh
 
   macos-clang-modules:
     runs-on: macos-latest
-    # Homebrew's clang++ still uses the macOS system libc++, which ships no
-    # 'libc++.modules.json', so 'import std' cannot be resolved there yet.
-    # Keep the job visible without blocking the branch until that is sorted out.
+    # Uses Homebrew LLVM's own libc++ for 'import std' (see Configure).
+    # Keep the job non-blocking until it has been confirmed stable on CI.
     continue-on-error: true
     steps:
     - name: Install Dependencies
@@ -160,9 +164,24 @@ jobs:
       uses: actions/checkout@v5
     - name: Configure
       run: |
+        # Homebrew's clang links the macOS system libc++ by default, and CMake's
+        # '-print-file-name' lookup does not find the 'libc++.modules.json' that
+        # Homebrew's own libc++ ships. Point CMake at it and link that libc++.
+        LLVM_PREFIX="$(brew --prefix llvm)"
+        MODULES_JSON="$(find "$LLVM_PREFIX/lib" -name 'libc++.modules.json' -print -quit)"
+        if [ -z "$MODULES_JSON" ]; then
+          echo "Error: libc++.modules.json not found under $LLVM_PREFIX/lib"
+          exit 1
+        fi
+        echo "Using $MODULES_JSON"
+        LIBCXX_LDFLAGS="-L$LLVM_PREFIX/lib/c++ -Wl,-rpath,$LLVM_PREFIX/lib/c++ -L$LLVM_PREFIX/lib/unwind -Wl,-rpath,$LLVM_PREFIX/lib/unwind -lunwind"
         cmake -S . -B build \
           -DCMAKE_BUILD_TYPE=Release \
-          -DCMAKE_CXX_COMPILER=$(brew --prefix llvm)/bin/clang++ \
+          -DCMAKE_CXX_STDLIB_MODULES_JSON="$MODULES_JSON" \
+          -DCMAKE_EXE_LINKER_FLAGS="$LIBCXX_LDFLAGS" \
+          -DCMAKE_SHARED_LINKER_FLAGS="$LIBCXX_LDFLAGS" \
+          -DCMAKE_MODULE_LINKER_FLAGS="$LIBCXX_LDFLAGS" \
+          -DCMAKE_CXX_COMPILER=$LLVM_PREFIX/bin/clang++ \
           -DCMAKE_C_COMPILER=$(brew --prefix llvm)/bin/clang \
           -DCPR_BUILD_MODULES=ON \
           -DCPR_BUILD_TESTS=ON \
@@ -175,11 +194,14 @@ jobs:
       run: ctest --test-dir build --output-on-failure --repeat until-pass:5
     - name: Verify Module Build
       run: |
-        echo "Contents of build/modules:"
-        ls -la build/modules/
-        if [ -f build/modules/libcpr_module.a ] || [ -f build/modules/libcpr_module.dylib ] || [ -f build/modules/cpr_module.a ] || find build/modules -name "*cpr_module*" -type f | grep -q .; then
+        # LIBRARY_OUTPUT_PATH places all libraries in build/lib, not build/modules.
+        echo "Searching for module library:"
+        found=$(find build/lib build/modules -type f \( -name 'libcpr_module*.a' -o -name 'libcpr_module*.dylib' \) 2>/dev/null || true)
+        if [ -n "$found" ]; then
+          echo "$found"
           echo "Module library built successfully"
         else
           echo "Error: Module library not found"
+          ls -la build/lib build/modules || true
           exit 1
         fi

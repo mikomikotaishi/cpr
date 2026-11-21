@@ -1,20 +1,19 @@
 #include "cpr/cpr.h"
 #include <cctype>
 #include <cstddef>
+#include <cstdint>
 #include <curl/curl.h>
 #include <gtest/gtest.h>
 #include <string>
 
 
 TEST(VersionTests, StringVersionExists) {
-#ifndef CPR_VERSION
-    EXPECT_TRUE(false);
-#endif // CPR_VERSION
+    EXPECT_FALSE(CPR_VERSION.empty());
 }
 
 TEST(VersionTests, StringVersionValid) {
-    EXPECT_TRUE(CPR_VERSION != nullptr);
-    std::string version = CPR_VERSION;
+    const std::string version{CPR_VERSION};
+    ASSERT_FALSE(version.empty());
 
     // Check if the version string is: '\d+\.\d+\.\d+'
     bool digit = true;
@@ -35,28 +34,14 @@ TEST(VersionTests, StringVersionValid) {
     EXPECT_EQ(dotCount, 2);
 }
 
-TEST(VersionTests, VersionMajorExists) {
-#ifndef CPR_VERSION_MAJOR
-    EXPECT_TRUE(false);
-#endif // CPR_VERSION_MAJOR
+TEST(VersionTests, VersionPartsMatchString) {
+    const std::string expected = std::to_string(CPR_VERSION_MAJOR) + "." + std::to_string(CPR_VERSION_MINOR) + "." + std::to_string(CPR_VERSION_PATCH);
+    EXPECT_EQ(std::string{CPR_VERSION}, expected);
 }
 
-TEST(VersionTests, VersionMinorExists) {
-#ifndef CPR_VERSION_MINOR
-    EXPECT_TRUE(false);
-#endif // CPR_VERSION_MINOR
-}
-
-TEST(VersionTests, VersionPatchExists) {
-#ifndef CPR_VERSION_PATCH
-    EXPECT_TRUE(false);
-#endif // CPR_VERSION_PATCH
-}
-
-TEST(VersionTests, VersionNumExists) {
-#ifndef CPR_VERSION_NUM
-    EXPECT_TRUE(false);
-#endif // CPR_VERSION_NUM
+TEST(VersionTests, VersionNumMatchesParts) {
+    const uint64_t expected = (static_cast<uint64_t>(CPR_VERSION_MAJOR) << 16) | (static_cast<uint64_t>(CPR_VERSION_MINOR) << 8) | static_cast<uint64_t>(CPR_VERSION_PATCH);
+    EXPECT_EQ(CPR_VERSION_NUM, expected);
 }
 
 #if defined(CPR_ENABLE_SSL)

@@ -1,7 +1,14 @@
 #ifndef CPR_SINGLETON_H
 #define CPR_SINGLETON_H
 
+/**
+ * If we build cpr as C++20 module, we use 'import std;'.
+ * So skip all other imports and declare them in 'cpr.cxx'.
+ **/
+#ifndef CPR_IMPORT_STD
 #include <cassert>
+#include <mutex>
+#endif
 
 // NOLINTBEGIN(cppcoreguidelines-macro-usage, bugprone-macro-parentheses)
 
