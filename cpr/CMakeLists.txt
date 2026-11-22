@@ -36,7 +36,10 @@ add_library(cpr::cpr ALIAS cpr)
 # Consumers of DLL data need explicit import declarations even with automatic exports.
 # More: https://cmake.org/cmake/help/latest/module/GenerateExportHeader.html
 include(GenerateExportHeader)
-generate_export_header(cpr EXPORT_FILE_NAME "${PROJECT_BINARY_DIR}/cpr_generated_includes/cpr/cprexport.h")
+# The default guard (CPR_EXPORT_H) would collide with include/cpr/export.h, which needs it for llvm-header-guard.
+generate_export_header(cpr
+    EXPORT_FILE_NAME "${PROJECT_BINARY_DIR}/cpr_generated_includes/cpr/cprexport.h"
+    INCLUDE_GUARD_NAME CPR_CPREXPORT_H)
 
 find_package(Threads REQUIRED)
 target_link_libraries(cpr PRIVATE Threads::Threads)

@@ -17,6 +17,12 @@ run("${CMAKE_COMMAND}" --install "${CPR_BUILD_DIR}/cpr" --prefix "${prefix}"
     ${config_args})
 run("${CMAKE_COMMAND}" --install "${CPR_BUILD_DIR}/include" --prefix "${prefix}"
     ${config_args})
+# cpr_module shares the cprTargets export set, so the installed cprTargets.cmake
+# references it whenever modules are built. Install it too, or find_package fails.
+if(EXISTS "${CPR_BUILD_DIR}/modules/cmake_install.cmake")
+    run("${CMAKE_COMMAND}" --install "${CPR_BUILD_DIR}/modules" --prefix "${prefix}"
+        ${config_args})
+endif()
 # Configure the consumer the same way as the parent build, so cprConfig.cmake's
 # find_dependency() calls (e.g. CURL from vcpkg) succeed. Settings go into an
 # initial cache file because run() would split list values on ';'.

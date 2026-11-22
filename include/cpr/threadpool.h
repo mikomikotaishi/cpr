@@ -1,6 +1,7 @@
 #ifndef CPR_THREADPOOL_H
 #define CPR_THREADPOOL_H
 
+#include "cpr/cprexport.h"
 #include "cpr/export.h"
 
 /**
@@ -61,7 +62,9 @@ EXPORT_CPR class ThreadPool {
      * Default maximum, initialized to hardware concurrency or one when it is unknown.
      * Set this before constructing pools, without concurrent access to this variable.
      **/
-    static size_t DEFAULT_MAX_THREAD_COUNT;
+    // CPR_EXPORT is required: CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS exports functions only,
+    // so DLL consumers need an explicit dllimport to reach this data member.
+    CPR_EXPORT static size_t DEFAULT_MAX_THREAD_COUNT;
 
     /**
      * Creates and starts a pool with the requested limits.

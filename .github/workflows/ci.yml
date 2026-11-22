@@ -290,14 +290,6 @@ jobs:
         build-type: ${{ matrix.buildType }}
         run-test: true
         ctest-options: ${{ env.CTEST_OPTIONS }}
-    - name: Diagnose missing test executables
-      # Read-only: shows whether a test exe vanished and whether Defender flagged it.
-      if: failure()
-      shell: pwsh
-      run: |
-        Get-ChildItem -Path build/bin -Recurse -Filter "threadpool_tests*" -ErrorAction SilentlyContinue | Format-Table FullName, Length, LastWriteTime
-        Get-MpThreatDetection | Format-List
-        Get-MpThreat | Format-List
 
   windows-msvc-openssl:
     runs-on: windows-latest
@@ -324,14 +316,6 @@ jobs:
         build-type: Release
         run-test: true
         ctest-options: ${{ env.CTEST_OPTIONS }}
-    - name: Diagnose missing test executables
-      # Read-only: shows whether a test exe vanished and whether Defender flagged it.
-      if: failure()
-      shell: pwsh
-      run: |
-        Get-ChildItem -Path build/bin -Recurse -Filter "threadpool_tests*" -ErrorAction SilentlyContinue | Format-Table FullName, Length, LastWriteTime
-        Get-MpThreatDetection | Format-List
-        Get-MpThreat | Format-List
 
   macos-clang-ssl:
     strategy:
